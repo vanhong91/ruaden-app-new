@@ -1,4 +1,5 @@
-# business_logic.py
+
+# business_logic.py (v10 test, adjust for Postgres but logic same)
 import logging
 from typing import Dict, List, Tuple, Optional
 from database import DatabaseManager
@@ -10,6 +11,7 @@ def inventory_as_base(user_id: Optional[int]) -> Dict[Tuple[str, str], float]:
     if not user_id:
         logger.warning("inventory_as_base: No user_id provided.")
         return {}
+    # Always fetch fresh inventory from database
     inv = DatabaseManager.list_inventory(user_id)
     logger.info(f"inventory_as_base: Retrieved {len(inv)} inventory items for user_id={user_id}")
     agg: Dict[Tuple[str, str], float] = {}
@@ -18,7 +20,7 @@ def inventory_as_base(user_id: Optional[int]) -> Dict[Tuple[str, str], float]:
             logger.warning(f"Invalid inventory item for user_id={user_id}: {row}")
             continue
         base_qty, base_unit = to_base(row["quantity"], row["unit"])
-        key = (DatabaseManager.normalize_name(row["name"]), base_unit.lower())
+        key = (DatabaseManager.normalize_name(row["name"]), base_unit.lower())  # Normalize unit to lowercase
         agg[key] = agg.get(key, 0.0) + base_qty
         logger.debug(f"inventory_as_base: {row['name']} -> {base_qty} {base_unit} (normalized key: {key})")
     return agg
@@ -40,10 +42,10 @@ def recipe_feasibility(recipe: Dict, user_id: Optional[int]) -> Tuple[bool, List
             continue
         name_normalized = DatabaseManager.normalize_name(r["name"])
         needed_base, base_unit = to_base(r["quantity"], r["unit"])
-        base_unit = base_unit.lower()
+        base_unit = base_unit.lower()  # Ensure unit is lowercase
         have_base = inv.get((name_normalized, base_unit), 0.0)
         logger.debug(f"Ingredient: {r['name']} (normalized: {name_normalized}) | Need: {needed_base} {base_unit} | Have: {have_base} {base_unit}")
-        if have_base < needed_base - 1e-6:
+        if have_base < needed_base - 1e-6:  # Consistent tolerance
             feasible = False
             missing = needed_base - have_base
             display_missing = from_base(missing, base_unit, r["unit"])
@@ -70,6 +72,7 @@ def consume_ingredients_for_recipe(recipe: Dict, user_id: Optional[int]) -> bool
     if not all(key in recipe for key in ["id", "title", "ingredients"]):
         logger.error(f"consume_ingredients_for_recipe: Invalid recipe structure: {recipe}")
         return False
+    # Re-check feasibility with fresh inventory data
     feasible, shorts = recipe_feasibility(recipe, user_id)
     if not feasible:
         logger.error(f"consume_ingredients_for_recipe: Recipe '{recipe['title']}' not feasible, missing: {[s['name'] for s in shorts]}")
@@ -79,7 +82,6 @@ def consume_ingredients_for_recipe(recipe: Dict, user_id: Optional[int]) -> bool
             for r in recipe["ingredients"]:
                 if not all(key in r for key in ["name", "quantity", "unit"]):
                     logger.warning(f"Invalid ingredient in recipe {recipe['title']}: {r}")
-                    conn.rollback()
                     return False
                 needed_base, base_unit = to_base(r["quantity"], r["unit"])
                 if not DatabaseManager.consume_base(user_id, r["name"], needed_base, base_unit.lower(), conn=conn):
@@ -87,7 +89,6 @@ def consume_ingredients_for_recipe(recipe: Dict, user_id: Optional[int]) -> bool
                     conn.rollback()
                     return False
             conn.commit()
-            DatabaseManager.log_cooked_recipe(user_id, recipe["id"])
         logger.info(f"Successfully consumed ingredients for recipe '{recipe['title']}' (id={recipe['id']})")
         return True
     except Exception as e:

@@ -1,63 +1,65 @@
-# config.py
+
+
 import os
-import tempfile
+import logging
 from dotenv import load_dotenv
 
+# ------------------------------------------------------------------------------
 # Load environment variables
+# ------------------------------------------------------------------------------
 load_dotenv()
 
-# Database configuration
-DB_NAME = os.getenv("SQLITE_DB_PATH", os.path.abspath("data.db"))
+# ------------------------------------------------------------------------------
+# Logging configuration
+# ------------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+)
+logger = logging.getLogger("config")
 
-# Application titles
+# ------------------------------------------------------------------------------
+# Database configuration
+# ------------------------------------------------------------------------------
+DB_TYPE = os.getenv("DB_TYPE", "postgres").strip().lower()
+
+# Hỗ trợ cả postgres và postgresql
+if DB_TYPE in ("postgres", "postgresql"):
+    DB_URL = os.getenv("DB_URL", "").strip()
+    if not DB_URL:
+        raise ValueError(
+            "❌ DB_URL is not set in .env file. Please define it for PostgreSQL connection.\n"
+            "Example:\n"
+            "    DB_TYPE=postgres\n"
+            "    DB_URL=postgresql://user:password@localhost:5432/dbname"
+        )
+    logger.info("✅ Using PostgreSQL database at %s", DB_URL)
+elif DB_TYPE == "sqlite":
+    DB_URL = os.getenv("SQLITE_DB_PATH", os.path.abspath("data.db")).strip()
+    if not DB_URL:
+        DB_URL = os.path.abspath("data.db")
+    logger.warning("⚠️ Falling back to SQLite database at %s", DB_URL)
+else:
+    raise ValueError(
+        f"❌ Unsupported DB_TYPE '{DB_TYPE}'. Use one of: 'postgres', 'postgresql', or 'sqlite'."
+    )
+
+# ------------------------------------------------------------------------------
+# Application configuration
+# ------------------------------------------------------------------------------
 APP_TITLE_EN = "What to Cook Today"
 APP_TITLE_VI = "Hôm Nay Nấu Gì"
 
-# Centralized unit aliases and valid units
-UNIT_ALIASES = {
-    "weight": {
-        "g": ("g", 1.0),
-        "gram": ("g", 1.0),
-        "grams": ("g", 1.0),
-        "kg": ("g", 1000.0),
-        "kilogram": ("g", 1000.0),
-        "kilograms": ("g", 1000.0),
-        "lạng": ("g", 100.0),
-        "lang": ("g", 100.0),
-        "ounce": ("g", 28.3495),
-        "ounces": ("g", 28.3495),
-        "pound": ("g", 453.592),
-        "pounds": ("g", 453.592),
-    },
-    "volume": {
-        "ml": ("ml", 1.0),
-        "milliliter": ("ml", 1.0),
-        "milliliters": ("ml", 1.0),
-        "l": ("ml", 1000.0),
-        "liter": ("ml", 1000.0),
-        "liters": ("ml", 1000.0),
-        "tsp": ("ml", 4.92892),
-        "teaspoon": ("ml", 4.92892),
-        "teaspoons": ("ml", 4.92892),
-        "tbsp": ("ml", 14.7868),
-        "tablespoon": ("ml", 14.7868),
-        "tablespoons": ("ml", 14.7868),
-        "cup": ("ml", 236.588),
-        "cups": ("ml", 236.588),
-        "chén": ("ml", 200.0),  # Vietnamese small bowl
-        "chen": ("ml", 200.0),
-        "bát": ("ml", 500.0),  # Vietnamese bowl
-        "bat": ("ml", 500.0),
-    },
-    "count": {
-        "piece": ("piece", 1.0),
-        "pieces": ("piece", 1.0),
-        "pc": ("piece", 1.0),
-        "pcs": ("piece", 1.0),
-        "cái": ("piece", 1.0),
-        "cai": ("piece", 1.0),
-        "cai.": ("piece", 1.0),
-    }
-}
-
-VALID_UNITS = list(set(alias for dimension in UNIT_ALIASES.values() for alias in dimension.keys()))
+# ------------------------------------------------------------------------------
+# Debug info (safe, only prints last part of URL for security)
+# ------------------------------------------------------------------------------
+if logger.isEnabledFor(logging.DEBUG):
+    safe_url = DB_URL
+    if "@" in DB_URL:
+        # Ẩn mật khẩu trong URL
+        parts = DB_URL.split("@")
+        left = parts[0].split("//")
+        if len(left) == 2:
+            safe_url = f"{left[0]}//***:***@{parts[1]}"
+    logger.debug("DB_TYPE=%s", DB_TYPE)
+    logger.debug("DB_URL=%s", safe_url)
