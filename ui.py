@@ -4063,6 +4063,8 @@
 ### tiếp tục chỉnh sửa Sử dụng bcrypt PostgreSQL
 
 
+
+
 import streamlit as st
 import html
 from datetime import datetime, timedelta
@@ -4574,7 +4576,7 @@ def topbar_account() -> None:
                 on_change=lambda: st.session_state.update({"language": st.session_state.language_selector})
             )
         with col3:
-            if st.button(get_text("logout")):
+            if st.button(get_text("logout"), key="logout_button"):
                 st.session_state.clear()
                 initialize_session_state()
                 logger.info(f"User {st.session_state.get('username', 'Unknown')} logged out")
@@ -5068,7 +5070,7 @@ def inventory_page() -> None:
                 quantity_input = st.text_input(get_text("quantity"), value="0.0", key="new_quantity")
             with col3:
                 unit = st.selectbox(get_text("unit"), options=VALID_UNITS, key="new_unit")
-            if st.form_submit_button(get_text("add_ingredient")):
+            if st.form_submit_button(get_text("add_ingredient"), use_container_width=True):
                 try:
                     quantity = normalize_quantity(quantity_input)
                     if not ingredient_name.strip():
@@ -5110,7 +5112,7 @@ def inventory_page() -> None:
         hide_index=True
     )
 
-    if st.button(get_text("save_changes")):
+    if st.button(get_text("save_changes"), key="save_inventory_changes"):
         errors = []
         validated_data = []
         for item in edited_data:
@@ -5209,7 +5211,7 @@ def recipes_page() -> None:
         )
 
         submit_label = get_text("update_recipe") if recipe_id else get_text("save_recipe")
-        if st.form_submit_button(submit_label):
+        if st.form_submit_button(submit_label, use_container_width=True):
             if not title.strip():
                 st.error(get_text("error_title_required"))
                 return
@@ -5386,7 +5388,7 @@ def feasibility_page() -> None:
             ])
             selected_missing.extend(result["shorts"])
 
-    if selected_missing and st.button(get_text("add_to_shopping")):
+    if selected_missing and st.button(get_text("add_to_shopping"), key="add_to_shopping_feasibility"):
         try:
             agg_missing = defaultdict(lambda: {"name": "", "quantity": 0.0, "unit": ""})
             for s in selected_missing:
@@ -5486,7 +5488,7 @@ def shopping_list_page() -> None:
     purchased_labels = [f"{item['name']} ({item['unit']})" for item in validated_shopping_data if item.get("name") and item.get("unit")]
     purchased_names = st.multiselect(get_text("select_purchased"), options=purchased_labels)
 
-    if st.button(get_text("update_inventory")):
+    if st.button(get_text("update_inventory"), key="update_inventory_from_shopping"):
         with Session() as session:
             try:
                 for item in validated_shopping_data:
@@ -5609,7 +5611,7 @@ def recipe_adjustment_page() -> None:
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button(get_text("cook_adjusted")):
+        if st.button(get_text("cook_adjusted"), key="cook_adjusted_button"):
             try:
                 feasible, shorts = recipe_feasibility(adjusted_recipe, user_id)
                 success, message = consume_ingredients_for_recipe(adjusted_recipe, user_id)
@@ -5637,16 +5639,16 @@ def recipe_adjustment_page() -> None:
                 st.error(get_text("db_error").format(error=str(e)))
 
     with col2:
-        if st.button(get_text("add_to_shopping_adjusted")):
+        if st.button(get_text("add_to_shopping_adjusted"), key="add_to_shopping_adjusted_unique"):
             try:
                 feasible, shorts = recipe_feasibility(adjusted_recipe, user_id)
                 if not feasible:
                     agg_missing = defaultdict(lambda: {"name": "", "quantity": 0.0, "unit": ""})
                     for s in shorts:
                         key = (_norm_name(s["name"]), _norm_unit(s["missing_unit_disp"]))
-                    agg_missing[key]["name"] = s["missing_unit_disp"]
-                    agg_missing[key]["quantity"] += s["missing_qty_disp"]
-                    agg_missing[key]["unit"] = s["missing_unit_disp"]
+                        agg_missing[key]["name"] = s["name"]
+                        agg_missing[key]["quantity"] += s["missing_qty_disp"]
+                        agg_missing[key]["unit"] = s["missing_unit_disp"]
                     new_shopping_list = list(agg_missing.values())
                     st.session_state["shopping_list_data"] = new_shopping_list
                     st.success(get_text("sent_to_shopping"))
@@ -5716,7 +5718,7 @@ def food_timeline_page() -> None:
         st.info(get_text("no_entries"))
         return
 
-    if st.button(get_text("reset_filter")):
+    if st.button(get_text("reset_filter"), key="reset_filter_timeline"):
         st.session_state["search_value"] = ""
         st.rerun()
 
@@ -5754,7 +5756,7 @@ def auth_gate_tabs() -> None:
         with st.form(key="login_form"):
             username = st.text_input(get_text("username"), key="login_username")
             password = st.text_input(get_text("password"), type="password", key="login_password")
-            if st.form_submit_button(get_text("login_button")):
+            if st.form_submit_button(get_text("login_button"), use_container_width=True):
                 user_id = DatabaseManager.verify_login(username, password)
                 if user_id:
                     st.session_state["user_id"] = user_id
@@ -5770,7 +5772,7 @@ def auth_gate_tabs() -> None:
             password = st.text_input(get_text("password"), type="password", key="register_password")
             sec_question = st.text_input(get_text("sec_question"), key="register_sec_question")
             sec_answer = st.text_input(get_text("sec_answer"), type="password", key="register_sec_answer")
-            if st.form_submit_button(get_text("create_account")):
+            if st.form_submit_button(get_text("create_account"), use_container_width=True):
                 success, message = DatabaseManager.create_user(username, password, sec_question, sec_answer)
                 if success:
                     st.success(message)
@@ -5787,7 +5789,7 @@ def auth_gate_tabs() -> None:
             username = st.text_input(get_text("username"), key="reset_username")
             sec_answer = st.text_input(get_text("sec_answer"), type="password", key="reset_sec_answer")
             new_password = st.text_input(get_text("new_password"), type="password", key="reset_new_password")
-            if st.form_submit_button(get_text("reset_button")):
+            if st.form_submit_button(get_text("reset_button"), use_container_width=True):
                 if DatabaseManager.reset_password(username, sec_answer, new_password):
                     st.success("Password reset successfully")
                     logger.info(f"Password reset for user {username}")
@@ -5830,7 +5832,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
 
 
