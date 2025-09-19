@@ -1,9 +1,4 @@
-
-
-
-
-# main.py (v10 test, replace sqlite3 with psycopg2, but keep logic)
-
+### dùng bcrypt và PostgreSQL 
 import streamlit as st
 import psycopg2
 from psycopg2 import OperationalError

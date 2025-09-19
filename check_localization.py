@@ -1,6 +1,5 @@
+### dùng bcrypt và PostgreSQL 
 
-
-# check_localization.py (v10 test, no changes needed)
 import logging
 from ui import TEXT
 

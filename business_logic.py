@@ -1,5 +1,5 @@
+### dùng bcrypt và PostgreSQL 
 
-# business_logic.py (v10 test, adjust for Postgres but logic same)
 import logging
 from typing import Dict, List, Tuple, Optional
 from database import DatabaseManager

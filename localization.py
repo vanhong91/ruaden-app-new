@@ -1,3 +1,4 @@
+### dùng bcrypt và PostgreSQL 
 import streamlit as st
 from config import APP_TITLE_EN, APP_TITLE_VI
 import logging

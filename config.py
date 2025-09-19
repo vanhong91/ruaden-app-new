@@ -1,4 +1,4 @@
-
+### dùng bcrypt và PostgreSQL 
 
 import os
 import logging
